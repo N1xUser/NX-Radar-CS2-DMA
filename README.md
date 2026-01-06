@@ -11,6 +11,7 @@
 
 **EDUCATIONAL PURPOSES ONLY.**
 Playing like an idiot will result in account bans (VAC/Game Ban). Since the software is undetected, the only way to get banned is by playing like a psycho and shooting through smokes all the time. Manual gameplay review is the only real threat, so just play like a 'very good player' and don't tell your team you have a 'little' help."
+
 ---
 ![MVIMG_20260105_195442](https://github.com/user-attachments/assets/4df067fb-2d90-4a87-aadd-6af3d97354d8)
 
