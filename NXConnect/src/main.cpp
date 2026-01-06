@@ -268,6 +268,7 @@ int main() {
         DWORD written;
         WriteFile(hSerial, send_buffer, pos, &written, NULL);
 
+        //This can be changed if the game performance drops, choose a higher value
         Sleep(16);
     }
 
