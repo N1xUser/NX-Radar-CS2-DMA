@@ -166,7 +166,7 @@ void driver_unload(PDRIVER_OBJECT driver_object) {
 	debug_print("Driver unloaded successfully.");
 }
 
-
+//Entry not prepared for kdmapper
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) {
 	UNREFERENCED_PARAMETER(registry_path);
 
