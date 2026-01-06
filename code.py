@@ -12,7 +12,7 @@ from fourwire import FourWire
 
 WIDTH = 240
 HEIGHT = 240
-ROTATION = 180 
+ROTATION = 180 #Set to 0 if you use the screen on the other side
 
 RADAR_Y_START = 5 
 RADAR_HEIGHT = 150 
