@@ -114,7 +114,7 @@ The driver handles the `MmCopyVirtualMemory` calls to read game memory from the 
 ![VID_20260105_202137-ezgif com-resize](https://github.com/user-attachments/assets/dec5144f-afa3-4ad0-ae46-52b20dbeba67)
 
 [Video Demo / Streamable](https://streamable.com/42xahw)
-[Video Demo / YouTube]([https://streamable.com/42xahw](https://www.youtube.com/watch?v=p7mJm7JKATg))
+[Video Demo / YouTube]((https://www.youtube.com/watch?v=p7mJm7JKATg))
 
 </div>
 
