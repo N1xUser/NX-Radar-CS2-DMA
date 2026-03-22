@@ -1,5 +1,5 @@
 ;
-; NXWire.inf
+; NXConnect.inf
 ;
 
 [Version]
@@ -7,7 +7,7 @@ Signature   = "$WINDOWS NT$"
 Class       = System ; TODO: specify appropriate Class
 ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
 Provider    = %ManufacturerName%
-CatalogFile = NXWire.cat
+CatalogFile = NXConnect.cat
 DriverVer   = ; TODO: set DriverVer in stampinf property pages
 PnpLockdown = 1
 
@@ -18,7 +18,7 @@ DefaultDestDir = 13
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-NXWire.sys = 1,,
+NXConnect.sys = 1,,
 
 ;*****************************************
 ; Install Section
@@ -28,35 +28,35 @@ NXWire.sys = 1,,
 %ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
 
 [Standard.NT$ARCH$.10.0...16299]
-%NXWire.DeviceDesc% = NXWire_Device, Root\NXWire ; TODO: edit hw-id
+%NXConnect.DeviceDesc% = NXConnect_Device, Root\NXConnect ; TODO: edit hw-id
 
-[NXWire_Device.NT]
+[NXConnect_Device.NT]
 CopyFiles = File_Copy
 
 [File_Copy]
-NXWire.sys
+NXConnect.sys
 
 ;-------------- Service installation
-[NXWire_Device.NT.Services]
-AddService = NXWire,%SPSVCINST_ASSOCSERVICE%, NXWire_Service_Inst
+[NXConnect_Device.NT.Services]
+AddService = NXConnect,%SPSVCINST_ASSOCSERVICE%, NXConnect_Service_Inst
 
-; -------------- NXWire driver install sections
-[NXWire_Service_Inst]
-DisplayName    = %NXWire.SVCDESC%
+; -------------- NXConnect driver install sections
+[NXConnect_Service_Inst]
+DisplayName    = %NXConnect.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %13%\NXWire.sys
+ServiceBinary  = %13%\NXConnect.sys
 
-[NXWire_Device.NT.Wdf]
-KmdfService = NXWire, NXWire_wdfsect
+[NXConnect_Device.NT.Wdf]
+KmdfService = NXConnect, NXConnect_wdfsect
 
-[NXWire_wdfsect]
+[NXConnect_wdfsect]
 KmdfLibraryVersion = $KMDFVERSION$
 
 [Strings]
 SPSVCINST_ASSOCSERVICE = 0x00000002
 ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
-DiskName = "NXWire Installation Disk"
-NXWire.DeviceDesc = "NXWire Device"
-NXWire.SVCDESC = "NXWire Service"
+DiskName = "NXConnect Installation Disk"
+NXConnect.DeviceDesc = "NXConnect Device"
+NXConnect.SVCDESC = "NXConnect Service"
