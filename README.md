@@ -58,9 +58,11 @@ The driver handles the `MmCopyVirtualMemory` calls to read game memory from the 
 1.  **Prerequisites:**
     *   Visual Studio 2022 with **Desktop development with C++**.
     *   **Windows Driver Kit (WDK)** installed.
+    *   **Important:** Ensure your WDK version matches your Windows version and Visual Studio configuration. You may need to adjust the driver project properties to target the correct Windows SDK version and Driver Development Kit version if you encounter compilation errors. Check your WDK installation and update accordingly.
 2.  **Build:**
     *   Open the Driver project properties.
     *   Set configuration to **Release / x64**.
+    *   **Note:** If you encounter errors related to Windows SDK or WDK version mismatch, you may need to change the target driver development kit version in the project properties to match your installed WDK version.
     *   Build the solution to generate `NXWire.sys`.
 3.  **Loading:**
     *   This step depends, I sign this driver with a leaked chinese certificate that I found long time ago, if you don't have one, or you just use kdmapper, load it with that and you will be fine.
@@ -101,13 +103,24 @@ The driver handles the `MmCopyVirtualMemory` calls to read game memory from the 
 3.  **Start CS2:** Launch the game and wait until you are in a match.
 4.  **Run the Client:**
     *   Run the compiled `NXConnect.exe` as **Administrator**.
-    *   It will ask for the COM Port (e.g., if ESP32 is on COM3, type `3`).
+    *   The client will automatically detect the COM port of your ESP32 and perform an automatic handshake (sending `RADAR_INIT` and waiting for `RADAR_ACK`).
+    *   If auto-detection fails, you will be prompted for the COM Port (e.g., if ESP32 is on COM3, type `3`).
 5.  **Play:**
     *   The "Waiting" screen on the ESP32 will disappear once data is received.
     *   Enemies appear as **Red Dots**.
     *   You are the **Green Dot** (Center).
     *   **Spectator Mode:** If you die, the radar automatically adjusts to the POV of the player you are spectating, so a little help for the rest when you are dead.
     *   **Bomb:** When planted, an **'A'** or **'B'** indicator appears at the top of the radar, this is not 100% accurate, so on a couple of maps B = A and A = B.
+
+### Automatic Handshake Protocol
+
+The client uses an automatic handshake mechanism to establish communication with the ESP32 display:
+
+*   **Handshake Message (`RADAR_INIT`):** The client sends `RADAR_INIT\n` to the ESP32.
+*   **Expected Response (`RADAR_ACK`):** The ESP32 responds with `RADAR_ACK\n`.
+*   **Timeout:** The handshake has a 2-second timeout. If no acknowledgment is received within this time, the COM port is considered unavailable and the client moves to the next port.
+*   **Auto-Detection:** The client automatically scans COM ports 1-20 to find the ESP32, performing the handshake on each port until successful connection is established.
+
 ---
 <div align="center">
  
@@ -149,6 +162,12 @@ RADAR_CY = RADAR_Y_START + (RADAR_HEIGHT // 2) + 50
     *   The `offsets` might be outdated. Update them.
 *   **Enemies Not Appearing:**
     *   Update the `offsets and client_dll`
+*   **Debugging Issues:**
+    *   The client creates a debug log file named `out.txt` on your Desktop if it already exists. To enable logging:
+        1. Create an empty file named `out.txt` on your Desktop.
+        2. Run `NXConnect.exe` as Administrator.
+        3. Check `out.txt` for detailed logs about COM port detection, handshake attempts, and any errors encountered.
+    *   This log file includes information about the automatic handshake process and can help identify why the COM port auto-detection might be failing.
 
 ---
 ## Hardware (Mandatory)
