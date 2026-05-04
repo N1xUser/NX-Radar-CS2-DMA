@@ -34,7 +34,7 @@ Playing like an idiot will result in account bans (VAC/Game Ban). Since the soft
 
 ```text
 CS2-Hardware-Radar/
-├── Driver/             # Kernel Driver (NXWire)
+├── Driver/             # Kernel Driver (NXWire Signed or Unsigned)
 │   └── main.cpp        # Driver Entry & Memory Operations
 ├── Client/             # User-Mode Application
 │   ├── main.cpp        # Logic to read memory & send to Serial
@@ -65,7 +65,7 @@ The driver handles the `MmCopyVirtualMemory` calls to read game memory from the 
     *   **Note:** If you encounter errors related to Windows SDK or WDK version mismatch, you may need to change the target driver development kit version in the project properties to match your installed WDK version.
     *   Build the solution to generate `NXWire.sys`.
 3.  **Loading:**
-    *   This step depends, I sign this driver with a leaked chinese certificate that I found long time ago, if you don't have one, or you just use kdmapper, load it with that and you will be fine.
+    *   This step depends on how you plan to load the driver. I sign this driver  with a leaked Chinese certificate that I found a long time ago. If you  don't have one, or you just want to use kdmapper, you can load it that way. Use the **NXConnect [Signed]** variation if you have a real certificate, and use **NXConnect[Unsigned]** for kdmapper. Note that I CANNOT guarantee your safety if you are using the Unsigned version, so use it at your own risk.
 
 <img width="1920" height="1080" alt="screenshot" src="https://github.com/user-attachments/assets/e2f13e2d-d1ce-4fdf-82f6-243bc89e5b7f" />
 
@@ -123,7 +123,7 @@ The client uses an automatic handshake mechanism to establish communication with
 
 ---
 <div align="center">
- 
+
 ![VID_20260105_202137-ezgif com-resize](https://github.com/user-attachments/assets/dec5144f-afa3-4ad0-ae46-52b20dbeba67)
 
 [Video Demo / Streamable](https://streamable.com/42xahw)
