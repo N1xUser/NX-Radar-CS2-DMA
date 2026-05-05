@@ -1,32 +1,65 @@
+
 # NX-Radar-CS2-DMA (ESP32-S3 + ST7789)
 
-**Status:** Undetected (External Hardware + Kernel Read)  
-**IMPORTANT:** The offsets have to be always updated, you can find it here:
- - [Offsets.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/offsets.hpp)
- - [Client_dll.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/client_dll.hpp)
+**Educational Focus:** External hardware-based radar using kernel read operations & serial display rendering.  
+**IMPORTANT:** Offsets must be updated regularly — they change with every CS2 update.  
+Source for offsets:  
+- [Offsets.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/offsets.hpp)  
+- [Client_dll.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/client_dll.hpp)
 
 ---
 
 ## Disclaimer
 
-**EDUCATIONAL PURPOSES ONLY.**
-Playing like an idiot will result in account bans (VAC/Game Ban). Since the software is undetected, the only way to get banned is by playing like a psycho and shooting through smokes all the time. Manual gameplay review is the only real threat, so just play like a 'very good player' and don't tell your team you have a 'little' help."
+**FOR EDUCATIONAL PURPOSES ONLY.**  
+This project demonstrates:
+- Kernel → User → Hardware data flow
+- External process memory reading via `MmCopyVirtualMemory`
+- Real-time serial communication with embedded devices
+- 2D map projection & rendering on a microcontroller
+
+Behavior that is obviously inhuman (e.g., shooting through smokes consistently) can still lead to manual review. The educational value is in *understanding* the chain, not evading detection.
 
 ---
 ![MVIMG_20260105_195442](https://github.com/user-attachments/assets/4df067fb-2d90-4a87-aadd-6af3d97354d8)
 
+## How the System Works (Educational Breakdown)
+
+```
+Game Memory (CS2)
+       ↓
+Kernel Driver (MmCopyVirtualMemory)
+       ↓
+User-Mode Client (Reads player positions)
+       ↓
+Serial (USB) to ESP32-S3
+       ↓
+ST7789 Display (Radar rendering)
+```
+
+1. **Kernel Driver** – Runs at Ring 0, bypasses user-mode anti-cheat hooks. Uses Windows `MmCopyVirtualMemory` to read CS2’s process memory safely from kernel space.
+2. **User Client** – Reads game data (local player, enemies, bomb state) using offsets from `cs2-dumper`. Converts world coordinates to radar coordinates.
+3. **Serial Handshake** – Client sends `RADAR_INIT` over COM port → ESP32 replies with `RADAR_ACK` → data stream starts.
+4. **ESP32 Firmware** – Receives player/bomb data over USB serial, projects onto 240x240 screen, draws dots/indicators.
+5. **Display** – ST7789 SPI screen shows:
+   - Green dot = you (or spectated player)
+   - Red dots = enemies
+   - A/B = bomb plant indicator (not 100% map-accurate)
+
+---
+
 ## Hardware Requirements
 
-*   **Microcontroller:** ESP32-S3 (DevKitC or similar) running circuitpython.
-*   **Display:** ST7789 1.3" or 1.54" IPS LCD (240x240 resolution).
-    *   *Note: Code is configured for Version 1.1 displays.*
-*   **Connection:** USB-C Data Cable (for serial communication).
-*   **Wiring:**
-    *   **CLK (SCL):** GPIO 12
-    *   **MOSI (SDA):** GPIO 11
-    *   **RES (Reset):** GPIO 9
-    *   **DC (Data/Command):** GPIO 8
-    *   **CS (Chip Select):** GPIO 10
+*   **Microcontroller:** ESP32-S3 (DevKitC or similar) running CircuitPython.
+*   **Display:** ST7789 1.3" or 1.54" IPS LCD (240x240).
+    - Code configured for Version 1.1 displays.
+*   **Connection:** USB-C data cable (serial communication).
+*   **Wiring (educational – shows SPI protocol):**
+    - CLK (SCL) → GPIO 12
+    - MOSI (SDA) → GPIO 11
+    - RES (Reset) → GPIO 9
+    - DC (Data/Command) → GPIO 8
+    - CS (Chip Select) → GPIO 10
 
 ---
 
@@ -34,160 +67,173 @@ Playing like an idiot will result in account bans (VAC/Game Ban). Since the soft
 
 ```text
 CS2-Hardware-Radar/
-├── Driver/             # Kernel Driver (NXWire Signed or Unsigned)
-│   └── main.cpp        # Driver Entry & Memory Operations
-├── Client/             # User-Mode Application
-│   ├── main.cpp        # Logic to read memory & send to Serial
-│   ├── client_dll.hpp  # Generated Schema
-│   └── offsets.hpp     # Generated Offsets
-└── Firmware/           # ESP32 CircuitPython Code
-    ├── code.py         # Rendering Logic
+├── Driver/             # Kernel driver – demonstrates MmCopyVirtualMemory
+│   └── main.cpp        # Driver entry, read operations
+├── Client/             # User-mode app – reads memory, sends to serial
+│   ├── main.cpp        # Coordinate conversion, handshake logic
+│   ├── client_dll.hpp  # Generated schema (game types)
+│   └── offsets.hpp     # Generated offsets (byte positions)
+└── Firmware/           # ESP32 CircuitPython code
+    ├── code.py         # Serial receive, rendering, projection math
     └── lib/
-        ├── adafruit_display_text/  # Library to render text
-        └── adafruit_st7789.mpy     # Library to render the graphs 
+        ├── adafruit_display_text/  # Text rendering
+        └── adafruit_st7789.mpy     # SPI display driver
 ```
 
 ---
 
-## Installation & Setup
+## Installation & Setup (Educational Walkthrough)
 
-### Part 1: The Kernel Driver (`NXWire`)
+### Part 1: Kernel Driver – Why Ring 0?
 
-The driver handles the `MmCopyVirtualMemory` calls to read game memory from the kernel level, bypassing user-mode anti-cheat hooks.
+User-mode anti-cheats hook Windows API calls like `ReadProcessMemory`. By reading memory from a kernel driver using `MmCopyVirtualMemory`, we bypass those hooks completely.
 
-1.  **Prerequisites:**
-    *   Visual Studio 2022 with **Desktop development with C++**.
-    *   **Windows Driver Kit (WDK)** installed.
-    *   **Important:** Ensure your WDK version matches your Windows version and Visual Studio configuration. You may need to adjust the driver project properties to target the correct Windows SDK version and Driver Development Kit version if you encounter compilation errors. Check your WDK installation and update accordingly.
-2.  **Build:**
-    *   Open the Driver project properties.
-    *   Set configuration to **Release / x64**.
-    *   **Note:** If you encounter errors related to Windows SDK or WDK version mismatch, you may need to change the target driver development kit version in the project properties to match your installed WDK version.
-    *   Build the solution to generate `NXWire.sys`.
-3.  **Loading:**
-    *   This step depends on how you plan to load the driver. I sign this driver  with a leaked Chinese certificate that I found a long time ago. If you  don't have one, or you just want to use kdmapper, you can load it that way. Use the **NXConnect [Signed]** variation if you have a real certificate, and use **NXConnect[Unsigned]** for kdmapper. Note that I CANNOT guarantee your safety if you are using the Unsigned version, so use it at your own risk.
+1. **Prerequisites:**
+   - Visual Studio 2022 + **Desktop development with C++**
+   - **Windows Driver Kit (WDK)** – matches your Windows build
+2. **Build:** Release / x64 → generates `NXWire.sys`
+3. **Loading (educational note):**
+   - Signed driver → loads normally if certificate is trusted
+   - Unsigned → requires manual mapping (e.g., kdmapper) – this is fragile and purely for learning
+
+> *What you learn here:* How kernel memory reading works, why drivers have higher privilege, and why anti-cheats detect unsigned mappings.
 
 <img width="1920" height="1080" alt="screenshot" src="https://github.com/user-attachments/assets/e2f13e2d-d1ce-4fdf-82f6-243bc89e5b7f" />
 
-### Part 2: The ESP32 Firmware
+### Part 2: ESP32 Firmware – Embedded Serial & Graphics
 
-1.  **Install CircuitPython:**
-    *   Put your ESP32-S3 into bootloader mode.
-    *   Flash the latest **CircuitPython 9.x** `.uf2` for your specific board.
-2.  **Install Libraries:**
-    *   Download the [Adafruit CircuitPython Bundle](https://circuitpython.org/libraries).
-    *   Copy the following folders/files to the `lib` folder on your `CIRCUITPY` drive:
-        *   `adafruit_display_text/`
-        *   `adafruit_st7789.mpy`
-3.  **Deploy Code:**
-    *   Copy the provided python script to the root of the drive and name it `code.py`.
-    *   **Config:** If your screen colors are inverted or the screen is mirrored, adjust `ROTATION` or the initialization arguments in `code.py`.
+The ESP32 acts as a **dumb terminal** – it receives data over USB and renders it.
 
-### Part 3: The C++ Client
+1. Flash **CircuitPython 9.x** `.uf2` via bootloader mode.
+2. Copy libraries from [Adafruit Bundle](https://circuitpython.org/libraries):
+   - `adafruit_display_text/`
+   - `adafruit_st7789.mpy`
+3. Upload `code.py` – handles:
+   - Serial read (blocking until handshake)
+   - World → screen coordinate math
+   - Dot drawing & bomb indicators
 
-1.  **Update Offsets:**
-    *   CS2 updates frequently. You must generate new offsets using a tool like [a2x/cs2-dumper](https://github.com/a2x/cs2-dumper), or download it on the page I put on the top.
-    *   Place `client_dll.hpp` and `offsets.hpp` in the Client source folder.
-2.  **Build:**
-    *   Open the C++ Client project in Visual Studio.
-    *   Set configuration to **Release / x64**.
-    *   Build the executable.
+> *What you learn here:* Real-time embedded rendering, SPI communication, coordinate projection.
+
+### Part 3: C++ Client – Memory Reading & Serial Protocol
+
+1. Update offsets using [cs2-dumper](https://github.com/a2x/cs2-dumper)
+2. Build **Release / x64**
+3. Run as Administrator (required for driver communication)
+
+> *What you learn here:* How to read external process memory, convert game coordinates to screen space, and implement a serial handshake.
+
+---
+
+## How It Works (Step-by-Step Execution)
+
+1. **Connect ESP32** → USB → Shows: `"WAITING FOR PROGRAM..."`
+2. **Load Kernel Driver** → Grants read access to CS2 memory
+3. **Launch CS2** → Enter a match
+4. **Run Client** (Admin) → 
+   - Scans COM ports 1–20
+   - Sends `RADAR_INIT\n`
+   - Waits for `RADAR_ACK\n` (2 sec timeout)
+   - On success → streams player data
+5. **ESP32 renders**:
+   - World coordinates → screen pixels
+   - Center is always you (or spectated player)
+   - Rotation applied to match in-game forward direction
+
+### Handshake Protocol (Educational)
+
+| Step | Direction | Data |
+|------|-----------|------|
+| 1 | PC → ESP32 | `RADAR_INIT\n` |
+| 2 | ESP32 → PC | `RADAR_ACK\n` |
+| 3 | PC → ESP32 | Binary player/bomb data |
+
+This ensures the correct COM port is found and the display is ready.
 
 ---
 
-## How to Run
-
-1.  **Connect the Hardware:** Plug in the ESP32-S3 via USB. The screen should show:
-    > "WAITING FOR PROGRAM..."
-2.  **Load the Driver:**.
-3.  **Start CS2:** Launch the game and wait until you are in a match.
-4.  **Run the Client:**
-    *   Run the compiled `NXConnect.exe` as **Administrator**.
-    *   The client will automatically detect the COM port of your ESP32 and perform an automatic handshake (sending `RADAR_INIT` and waiting for `RADAR_ACK`).
-    *   If auto-detection fails, you will be prompted for the COM Port (e.g., if ESP32 is on COM3, type `3`).
-5.  **Play:**
-    *   The "Waiting" screen on the ESP32 will disappear once data is received.
-    *   Enemies appear as **Red Dots**.
-    *   You are the **Green Dot** (Center).
-    *   **Spectator Mode:** If you die, the radar automatically adjusts to the POV of the player you are spectating, so a little help for the rest when you are dead.
-    *   **Bomb:** When planted, an **'A'** or **'B'** indicator appears at the top of the radar, this is not 100% accurate, so on a couple of maps B = A and A = B.
-
-### Automatic Handshake Protocol
-
-The client uses an automatic handshake mechanism to establish communication with the ESP32 display:
-
-*   **Handshake Message (`RADAR_INIT`):** The client sends `RADAR_INIT\n` to the ESP32.
-*   **Expected Response (`RADAR_ACK`):** The ESP32 responds with `RADAR_ACK\n`.
-*   **Timeout:** The handshake has a 2-second timeout. If no acknowledgment is received within this time, the COM port is considered unavailable and the client moves to the next port.
-*   **Auto-Detection:** The client automatically scans COM ports 1-20 to find the ESP32, performing the handshake on each port until successful connection is established.
-
----
 <div align="center">
 
 ![VID_20260105_202137-ezgif com-resize](https://github.com/user-attachments/assets/dec5144f-afa3-4ad0-ae46-52b20dbeba67)
 
-[Video Demo / Streamable](https://streamable.com/42xahw)
-[Video Demo / YouTube](https://www.youtube.com/watch?v=p7mJm7JKATg)
+[Video Demo / Streamable](https://streamable.com/42xahw)  
+[Video Demo / YouTube]()
 
 </div>
 
-
 ---
 
-
-## Configuration
+## Configuration (Understanding the Math)
 
 ### Radar Scale (Zoom)
-To change how much of the map is visible, edit `code.py`:
 ```python
 # Lower = Zoom In | Higher = Zoom Out
 scale = (WIDTH / 2) / 2100.0 
 ```
+How it works: world units → pixels. `2100` is ~half the visible radius in game units.
 
-### Player Position (Origin)
-To move the player dot (to see more in front or behind), edit `code.py`:
+### Player Position Offset (View Adjustment)
 ```python
 # +50 moves player down (see more in front)
 RADAR_CY = RADAR_Y_START + (RADAR_HEIGHT // 2) + 50 
 ```
+This shifts your dot, effectively changing what you see ahead vs. behind.
 
 ---
 
-## Troubleshooting
+## Troubleshooting (Educational)
 
-*   **Screen is Black:**
-    *   Check wiring (GPIO 12/11/9/8/10).
-    *   Ensure CircuitPython libraries are in `lib/`.
-*   **Windows crashes:**
-    *   The `offsets` might be outdated. Update them.
-*   **Enemies Not Appearing:**
-    *   Update the `offsets and client_dll`
-*   **Debugging Issues:**
-    *   The client creates a debug log file named `out.txt` on your Desktop if it already exists. To enable logging:
-        1. Create an empty file named `out.txt` on your Desktop.
-        2. Run `NXConnect.exe` as Administrator.
-        3. Check `out.txt` for detailed logs about COM port detection, handshake attempts, and any errors encountered.
-    *   This log file includes information about the automatic handshake process and can help identify why the COM port auto-detection might be failing.
+| Symptom | Likely Cause | What You Learn |
+|---------|--------------|----------------|
+| Black screen | Wrong SPI wiring or missing libs | Hardware debugging |
+| Windows crash | Outdated offsets | Memory structures change with game updates |
+| No enemies | `client_dll.hpp` mismatch | Game schema changes |
+| COM port not found | Wrong baud or handshake mismatch | Serial protocol debugging |
+
+### Debug Logging
+Create `out.txt` on Desktop → client logs:
+- COM port scan results
+- Handshake success/failure
+- Read errors
+
+Useful for understanding the auto-detection flow.
 
 ---
-## Hardware (Mandatory)
-*   **ESP32 S3**
-    *   Aliexpress, like $7.
-    *   [ESP32](https://es.aliexpress.com/item/1005009026897112.html)
-*   **SPI 240x240 ST7789**
-    *   Aliexpress, like $4.
-    *   [Screen](https://es.aliexpress.com/item/1005008625277253.html)
+
+## Hardware (Mandatory – Educational)
+
+| Component | Cost | Why it works |
+|-----------|------|---------------|
+| ESP32-S3 | ~$7 | USB native, fast enough for real-time rendering |
+| ST7789 240x240 | ~$4 | SPI display – simple protocol to learn |
+
+- [ESP32 on AliExpress](https://es.aliexpress.com/item/1005009026897112.html)
+- [Screen on AliExpress](https://es.aliexpress.com/item/1005008625277253.html)
 
 ## Hardware (Optional)
-*   **Set 24AWG Cables, 8CM 120 u**
-    *   Aliexpress, like $2
-    *   [Cables](https://es.aliexpress.com/item/1005008194967488.html)
-*   **Set Dupont Line, 10CM, 120 u**
-    *   Aliexpress, like $2.7
-    *   [Kit](https://es.aliexpress.com/item/1005007298861842.html)
-*   **PCB Set, mixed, 5 u**
-    *   Aliexpress, like $2.4
-    *   [PCB](https://es.aliexpress.com/item/1005006467195096.html)
-*   **1x40Pin 2,54mm, 10 Uds**
-    *   Aliexpress, like $1.8
-    *   [Connectors](https://es.aliexpress.com/item/1005007235591794.html)
+
+- 24AWG cables, 8cm
+- Dupont lines, 10cm
+- Mixed PCB set
+- 2.54mm pin headers
+
+> *Why optional:* The educational core is software + wiring. Breadboards work fine for learning.
+
+---
+
+## What You Learn From This Project
+
+- Kernel vs. user mode memory access
+- Windows driver development basics (`MmCopyVirtualMemory`)
+- Reading external game memory using offsets
+- Coordinate transformation (world → screen)
+- Serial communication & handshake protocols
+- Embedded rendering (CircuitPython + SPI display)
+- Real-time data streaming over USB
+
+This is not a "cheat" – it’s a **hardware-assisted memory visualization tool** built for learning OS, embedded, and game hacking countermeasures.
+
+---
+
+**License & Ethics**  
+Use this code only on systems you own, for educational research. Reverse engineering game memory violates almost all game EULAs. Understand the technique, don't abuse it.
