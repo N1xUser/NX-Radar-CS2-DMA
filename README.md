@@ -1,12 +1,37 @@
 
 # NX-Radar-CS2-DMA (ESP32-S3 + ST7789)
 
-**Educational Focus:** External hardware-based radar using kernel read operations & serial display rendering.  
-**IMPORTANT:** Offsets must be updated regularly — they change with every CS2 update.  
-Source for offsets:  
-- [Offsets.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/offsets.hpp)  
+# How to Build a Simple DMA Radar with Only an ESP32 + Cheap Screen
+
+**The core idea:** Read game memory from kernel space → Send data over USB → Draw on a $4 display.  
+No expensive FPGA DMA hardware. No PCIe cards. Just an ESP32, a small screen, and understanding how Windows memory works.
+
+**IMPORTANT:** Game offsets change every update. Get fresh ones here:
+- [Offsets.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/offsets.hpp)
 - [Client_dll.hpp](https://github.com/a2x/cs2-dumper/blob/main/output/client_dll.hpp)
 
+---
+
+## Disclaimer
+
+**100% Educational – Teaching Hardware-Assisted Memory Reading**
+
+This project demonstrates:
+- How kernel memory reads bypass user-mode restrictions
+- How to stream game data over USB to an external device
+- How to render positions on a cheap SPI display
+
+The technique is academically interesting. Don't be stupid with it.
+
+---
+
+## How Is This Even Possible? (The Short Answer)
+
+Most game anti-cheats run in **user mode** (Ring 3). They hook Windows APIs like `ReadProcessMemory`. But they **cannot** block a kernel driver (Ring 0) from calling `MmCopyVirtualMemory` — that would break the OS.
+
+So the chain is:
+
+**Educational Focus:** External hardware-based radar using kernel read operations & serial display rendering.  
 ---
 
 ## Disclaimer
