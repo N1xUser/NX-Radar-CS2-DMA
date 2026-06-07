@@ -97,7 +97,7 @@ CS2-Hardware-Radar/
 │   └── NXConnect [Unsigned]/   # Unsigned driver (requires manual mapping)
 ├── NXBase/             # User-mode app – reads memory, sends to serial
 │   └── src/            # Coordinate conversion, handshake logic, offsets
-└── ESP32S3/            # ESP32 Firmwares
+└── NX - DMA [ESP32S3]/ # ESP32 Firmwares
     ├── NXRadar [Arduino]/        # Native C++ Arduino firmware (High FPS)
     └── NXRadar [Circuitpython]/  # CircuitPython firmware (Easy to modify)
         ├── boot.py
@@ -131,11 +131,11 @@ The ESP32 acts as a **dumb terminal** – it receives data over USB and renders 
 
 #### Option A: CircuitPython (Easier to modify)
 1. Flash **CircuitPython 9.x** `.uf2` to your ESP32-S3 via bootloader mode.
-2. Copy `boot.py`, `code.py` and the `lib/` folder from `ESP32S3/NXRadar [Circuitpython]/` to your `CIRCUITPY` drive.
+2. Copy `boot.py`, `code.py` and the `lib/` folder from `NX - DMA [ESP32S3]/NXRadar [Circuitpython]/` to your `CIRCUITPY` drive.
 3. The script will automatically run on boot, handling the serial read, coordinate math, and rendering.
 
 #### Option B: Arduino / C++ (Higher performance, 60fps+)
-1. Open `ESP32S3/NXRadar [Arduino]/NXRadar.ino` in the Arduino IDE.
+1. Open `NX - DMA [ESP32S3]/NXRadar [Arduino]/NXRadar.ino` in the Arduino IDE.
 2. Install the **LovyanGFX** library via the Arduino Library Manager.
 3. Select **ESP32S3 Dev Module** as your board.
 4. Set **USB CDC On Boot: Enabled** and **USB Mode: Hardware CDC and JTAG** in the Tools menu.
