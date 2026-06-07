@@ -192,12 +192,18 @@ last_refresh = time.monotonic()
 min_frame_time = 1.0 / 60.0
 needs_refresh = False
 is_connected = False
+last_beacon = 0.0
 
 display.root_group = waiting_group
 display.refresh()
 
 while True:
 	now = time.monotonic()
+	
+	# Broadcast RADAR_READY beacon every 500ms when not connected
+	if not is_connected and (now - last_beacon >= 0.5):
+		serial.write(b"RADAR_READY\n")
+		last_beacon = now
 	
 	if serial.in_waiting:
 		try:
@@ -217,6 +223,7 @@ while True:
 
 			if text == "RADAR_DISCONNECT":
 				is_connected = False
+				lbl_wait.text = "WAITING FOR\nPROGRAM..."
 				display.root_group = waiting_group
 				needs_refresh = True
 				for s in slots:

@@ -92,17 +92,17 @@ ST7789 Display (Radar rendering)
 
 ```text
 CS2-Hardware-Radar/
-├── Driver/             # Kernel driver – demonstrates MmCopyVirtualMemory
-│   └── main.cpp        # Driver entry, read operations
-├── Client/             # User-mode app – reads memory, sends to serial
-│   ├── main.cpp        # Coordinate conversion, handshake logic
-│   ├── client_dll.hpp  # Generated schema (game types)
-│   └── offsets.hpp     # Generated offsets (byte positions)
-└── Firmware/           # ESP32 CircuitPython code
-    ├── code.py         # Serial receive, rendering, projection math
-    └── lib/
-        ├── adafruit_display_text/  # Text rendering
-        └── adafruit_st7789.mpy     # SPI display driver
+├── NX - Driver/        # Kernel driver – demonstrates MmCopyVirtualMemory
+│   ├── NXConnect [Signed]/     # Signed driver (loads if certificate trusted)
+│   └── NXConnect [Unsigned]/   # Unsigned driver (requires manual mapping)
+├── NXBase/             # User-mode app – reads memory, sends to serial
+│   └── src/            # Coordinate conversion, handshake logic, offsets
+└── ESP32S3/            # ESP32 Firmwares
+    ├── NXRadar [Arduino]/        # Native C++ Arduino firmware (High FPS)
+    └── NXRadar [Circuitpython]/  # CircuitPython firmware (Easy to modify)
+        ├── boot.py
+        ├── code.py     # Serial receive, rendering, projection math
+        └── lib/        # Adafruit libraries
 ```
 
 ---
@@ -127,16 +127,19 @@ User-mode anti-cheats hook Windows API calls like `ReadProcessMemory`. By readin
 
 ### Part 2: ESP32 Firmware – Embedded Serial & Graphics
 
-The ESP32 acts as a **dumb terminal** – it receives data over USB and renders it.
+The ESP32 acts as a **dumb terminal** – it receives data over USB and renders it. You can choose either the **CircuitPython** or **Arduino** (Native) firmware. Both are fully compatible with the same NXBase client thanks to a unified handshake protocol.
 
-1. Flash **CircuitPython 9.x** `.uf2` via bootloader mode.
-2. Copy libraries from [Adafruit Bundle](https://circuitpython.org/libraries):
-   - `adafruit_display_text/`
-   - `adafruit_st7789.mpy`
-3. Upload `code.py` – handles:
-   - Serial read (blocking until handshake)
-   - World → screen coordinate math
-   - Dot drawing & bomb indicators
+#### Option A: CircuitPython (Easier to modify)
+1. Flash **CircuitPython 9.x** `.uf2` to your ESP32-S3 via bootloader mode.
+2. Copy `boot.py`, `code.py` and the `lib/` folder from `ESP32S3/NXRadar [Circuitpython]/` to your `CIRCUITPY` drive.
+3. The script will automatically run on boot, handling the serial read, coordinate math, and rendering.
+
+#### Option B: Arduino / C++ (Higher performance, 60fps+)
+1. Open `ESP32S3/NXRadar [Arduino]/NXRadar.ino` in the Arduino IDE.
+2. Install the **LovyanGFX** library via the Arduino Library Manager.
+3. Select **ESP32S3 Dev Module** as your board.
+4. Set **USB CDC On Boot: Enabled** and **USB Mode: Hardware CDC and JTAG** in the Tools menu.
+5. Compile and upload to your ESP32-S3.
 
 > *What you learn here:* Real-time embedded rendering, SPI communication, coordinate projection.
 
@@ -169,11 +172,12 @@ The ESP32 acts as a **dumb terminal** – it receives data over USB and renders 
 
 | Step | Direction | Data |
 |------|-----------|------|
-| 1 | PC → ESP32 | `RADAR_INIT\n` |
-| 2 | ESP32 → PC | `RADAR_ACK\n` |
-| 3 | PC → ESP32 | Binary player/bomb data |
+| 1 | ESP32 → PC | `RADAR_READY\n` (Beacon sent every 500ms until connected) |
+| 2 | PC → ESP32 | `RADAR_INIT\n` |
+| 3 | ESP32 → PC | `RADAR_ACK\n` |
+| 4 | PC → ESP32 | Text-based player/bomb data (`p,x,y,ang;e,...`) |
 
-This ensures the correct COM port is found and the display is ready.
+This ensures the correct COM port is auto-detected seamlessly, regardless of which firmware (CircuitPython or Arduino) is loaded, and confirms the display is ready.
 
 ---
 

@@ -1,4 +1,4 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -12,10 +12,10 @@
 #include "offsets.hpp"
 
 #define ENTITY_STRIDE 0x70
-#define HANDSHAKE_MSG "RADAR_INIT\n"
-#define HANDSHAKE_RESPONSE "RADAR_ACK\n"
-#define HANDSHAKE_TIMEOUT_MS 2000
 #define DISCONNECT_MSG "RADAR_DISCONNECT\n"
+
+#define INIT_MSG "RADAR_INIT\n"
+#define ACK_MSG "RADAR_ACK\n"
 
 struct NameBuffer {
   char buffer[128];
@@ -33,7 +33,7 @@ void init_logging() {
       S_OK) {
     std::string log_path = std::string(desktop_path) + "\\out.txt";
 
-    // Check if file exists
+
     std::ifstream test(log_path);
     if (test.good()) {
       test.close();
@@ -138,75 +138,115 @@ static HANDLE try_open_com_port(int port_num) {
   dcb.ByteSize = 8;
   dcb.StopBits = ONESTOPBIT;
   dcb.Parity = NOPARITY;
+
   SetCommState(h, &dcb);
 
   COMMTIMEOUTS to = {0};
   to.ReadIntervalTimeout = 50;
-  to.ReadTotalTimeoutConstant = 100;
-  to.ReadTotalTimeoutMultiplier = 10;
-  to.WriteTotalTimeoutConstant = 100;
+  to.ReadTotalTimeoutConstant = 1000;
+  to.ReadTotalTimeoutMultiplier = 0;
+  to.WriteTotalTimeoutConstant = 500;
   SetCommTimeouts(h, &to);
 
   PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
   return h;
 }
 
-static bool perform_handshake(HANDLE hSerial) {
-  DWORD written;
-  if (!WriteFile(hSerial, HANDSHAKE_MSG, strlen(HANDSHAKE_MSG), &written,
-                 NULL)) {
-    return false;
-  }
+bool perform_handshake(HANDLE hSerial) {
 
-  char response[64] = {0};
-  DWORD start_time = GetTickCount();
-  DWORD bytes_read = 0;
-  int total_read = 0;
+  Sleep(3000);
+  PurgeComm(hSerial, PURGE_RXCLEAR | PURGE_TXCLEAR);
 
-  while (GetTickCount() - start_time < HANDSHAKE_TIMEOUT_MS) {
-    if (ReadFile(hSerial, response + total_read,
-                 sizeof(response) - total_read - 1, &bytes_read, NULL)) {
-      if (bytes_read > 0) {
-        total_read += bytes_read;
-        response[total_read] = '\0';
 
-        if (strstr(response, "RADAR_ACK") != NULL) {
-          return true;
-        }
+  char accumBuf[2048];
+  int  accumPos = 0;
+
+  for (int attempt = 0; attempt < 5; attempt++) {
+    char buf[512];
+    DWORD bytesRead = 0;
+    BOOL ok = ReadFile(hSerial, buf, sizeof(buf) - 1, &bytesRead, NULL);
+    
+    if (ok && bytesRead > 0) {
+      buf[bytesRead] = '\0';
+      log_message("    Read " + std::to_string(bytesRead) + " bytes: " + std::string(buf, (bytesRead < 40) ? bytesRead : 40));
+
+      // Append to accumulation buffer
+      int space = sizeof(accumBuf) - accumPos - 1;
+      int copyLen = (bytesRead < (DWORD)space) ? (int)bytesRead : space;
+      memcpy(accumBuf + accumPos, buf, copyLen);
+      accumPos += copyLen;
+      accumBuf[accumPos] = '\0';
+
+      if (strstr(accumBuf, "RADAR_READY") != nullptr) {
+        log_message("    Beacon detected!");
+        return true;
       }
+    } else {
+      log_message("    Read attempt " + std::to_string(attempt + 1) + ": 0 bytes");
     }
-    Sleep(50);
   }
-
   return false;
 }
 
 static HANDLE auto_detect_com_port() {
-  log_message("Auto-detecting COM port...");
+  log_message("Auto-detecting COM port (listening for beacon)...");
+  for (int i = 1; i <= 256; i++) {
+    HANDLE h = try_open_com_port(i);
+    if (h == INVALID_HANDLE_VALUE) continue;
 
-  for (int port = 1; port <= 20; port++) {
-    std::string msg = "Trying COM" + std::to_string(port) + "...";
-    log_message(msg);
+    log_message("  Found open port COM" + std::to_string(i) + "...");
 
-    HANDLE h = try_open_com_port(port);
+    CloseHandle(h);
+
+    log_message("    Waiting for ESP32 to boot (3.5s)...");
+    Sleep(3500);
+
+    h = try_open_com_port(i);
     if (h == INVALID_HANDLE_VALUE) {
-      log_message("  Not available.");
+      log_message("    COM" + std::to_string(i) + " disappeared after reset, not ESP32.");
       continue;
     }
 
-    log_message("  Open. Testing handshake...");
+    log_message("    Reopened COM" + std::to_string(i) + ", listening for beacon...");
 
-    if (perform_handshake(h)) {
-      msg = "SUCCESS! Radar display detected on COM" + std::to_string(port);
-      log_message(msg);
+    char accumBuf[2048];
+    int  accumPos = 0;
+    bool found = false;
+
+    for (int attempt = 0; attempt < 5; attempt++) {
+      char buf[512];
+      DWORD bytesRead = 0;
+      BOOL ok = ReadFile(h, buf, sizeof(buf) - 1, &bytesRead, NULL);
+
+      if (ok && bytesRead > 0) {
+        buf[bytesRead] = '\0';
+        log_message("    Read " + std::to_string(bytesRead) + " bytes: " + std::string(buf, (bytesRead < 40) ? bytesRead : 40));
+
+        int space = sizeof(accumBuf) - accumPos - 1;
+        int copyLen = (bytesRead < (DWORD)space) ? (int)bytesRead : space;
+        memcpy(accumBuf + accumPos, buf, copyLen);
+        accumPos += copyLen;
+        accumBuf[accumPos] = '\0';
+
+        if (strstr(accumBuf, "RADAR_READY") != nullptr) {
+          log_message("    Beacon detected!");
+          found = true;
+          break;
+        }
+      } else {
+        log_message("    Read attempt " + std::to_string(attempt + 1) + ": 0 bytes");
+      }
+    }
+
+    if (found) {
+      log_message("  -> Found NXRadar on COM" + std::to_string(i) + "!");
       return h;
     }
 
-    log_message("  No response.");
+    log_message("  COM" + std::to_string(i) + " - no beacon, skipping.");
     CloseHandle(h);
-    Sleep(100);
   }
-
+  log_message("ERROR: Failed to find radar on any COM port.");
   return INVALID_HANDLE_VALUE;
 }
 
@@ -247,7 +287,7 @@ int main() {
 
   HANDLE hSerial = auto_detect_com_port();
   if (hSerial == INVALID_HANDLE_VALUE) {
-    log_message("ERROR: Failed to detect radar display.");
+    log_message("ERROR: Please make sure the ESP32 is plugged in and running.");
     if (logging_enabled)
       log_file.close();
     return 1;
@@ -467,8 +507,7 @@ int main() {
           driver::read_memory<uintptr_t>(driver, offset_planted_c4);
       if (c4_ptr) {
         int site = driver::read_memory<int>(driver, c4_ptr + m_nBombSite);
-        // CS2 standard: 0 = A, 1 = B
-        // Send raw value, let display handle any map-specific logic if needed
+
         pos += snprintf(send_buffer + pos, sizeof(send_buffer) - pos, ";b,%d",
                         site);
       }
@@ -480,7 +519,6 @@ int main() {
     DWORD written;
     WriteFile(hSerial, send_buffer, pos, &written, NULL);
 
-    Sleep(16);
   }
 
   send_disconnect_signal(hSerial);
